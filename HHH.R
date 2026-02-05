@@ -4,16 +4,62 @@ library(readxl)
 
 m1 <- read_excel("ORR.xlsx")
 
-a <- metabin(
-  event.exp, total.exp,
-  event.con, total.con,
-  data = m1,
-  sm = "RR",                
-  method = "MH",             
-  studlab = study,           
-  common = FALSE,            
-  random = TRUE             
-)
+a <- transform(m1, darcsin = 0.5 * (asin(sqrt(Case / (Sample.size + 1))) + 
+                                     asin(sqrt((Case + 1) / (Sample.size + 1)))))
+
+meta1 <- metaprop(Case, Sample.size,
+                  data = a,
+                  studlab = paste(Study),
+                  sm = "PFT",
+                  incr = 0.5,
+                  method.incr = "all",
+                  pscale = 100,
+                  common = FALSE,
+                  subgroup = Therapy)
+
+pdf("forestplot.pdf", width = 16, height = 8)
+forest(meta1,
+       sortvar = Article.number,
+       xlim = c(0, 100),pscale = 100,  
+       col.square = "#58A0CE",
+       col.diamond="maroon", col.diamond.lines="maroon",
+       col.inside = "white",
+       rightcols = c("effect", "ci"),
+       rightlabs = c("PSA response (%)", "95% CI"),
+       leftcols = c("studlab","Phase","Therapy","Sample.size"),
+       leftlabs = c("Study","Phase","Therapy","Patients"),
+       widths = c(4, 2, 4), 
+       just.addcols.left = "left",
+       digits.I2 = 1,
+       digits.pval.Q = 2,
+       print.tau2 = FALSE)
+dev.off()
+
+metainf_res <- metainf(meta1, pooled = "random")
+
+pdf("Sensitivity.pdf", width = 16, height = 8)
+forest(metainf_res,
+       comb.random = TRUE,
+       xlim = c(0, 70),
+       col.square = "#58A0CE",
+       col.diamond = "springgreen4",
+       col.diamond.lines = "white",
+       rightcols = c("effect", "ci"),
+       rightlabs = c("Incidence (%)", "95% CI"))
+dev.off()
+
+funnel(meta1)
+funnel(meta1,
+       atransf = transf.iarcsin,
+       yaxis = "sei",
+       xlab = "Proportion",
+       ylab = "Standard Error",
+       digits = 4,
+       level = c(90, 95, 99),
+       shade = c("white", "grey", "lightblue3"),
+       legend = FALSE,
+       cex.lab = 1.5) 
+dev.off()
 
 m1 <- read_excel("OS.xlsx")
 m1 <- read_excel("PFS.xlsx")
